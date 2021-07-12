@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "eform",
+  "description": "eform",
+  "version": "1.0.0",
+  "icons": {
+    "64": "icons/icon.png"
+  },
+  "permissions": ["storage", "activeTab", "scripting", "tabs", "background", "scripting"],
+  "host_permissions" : [ "http://*/*", "https://*/*", "file://*/*", "file://*/*"],
+  "background": {
+    "service_worker": "background_script.js"
+  },
+  "action": {
+	"default_popup": "popup.html",
+	"default_icon": {
+		"16" : "/icons/icon.png",
+		"32" : "/icons/icon.png",
+		"48" : "/icons/icon.png",
+		"128" : "/icons/icon.png"
+	}
+  },
+  "content_scripts": [
+    { "matches": ["https://qa-online.sterbc.com/*"], "js": ["iso-content_script.js"] },
+    { "matches": ["file:///C:/Users/ddev/me/eform/*"], "js": ["eform-content_script.js"] }
+  ],
+  "web_accessible_resources": [
+    { 
+      "resources" : ["iso-content-main.js", "operationType.js", "executor.js", "operation.js"],
+      "matches" : ["https://qa-online.sterbc.com/*"]
+    }
+  ],
+  "options_ui": {
+    "page": "options/index.html"
+  }
+}
