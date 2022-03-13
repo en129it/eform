@@ -5,6 +5,8 @@ let tabIdToTabMap = new Map();
 let eformTabId = null;
 let isoTabId = null;
 
+chrome.messageHistory = new Array();
+
 function isIsoTab(tab) {
 	return (tab.url.indexOf('https://qa-online.sterbc.com') > -1);
 }
@@ -40,8 +42,8 @@ function addTabListItem(tab) {
 				target: {tabId: isoTabId }
 			});
 		}
-		sendMessageToIsoTab('Hello worlcome to eform copy');
-		sendMessageToPopup('Hello worlcome to eform copy');
+		sendMessageToIsoTab('Hello welcome to eform copy');
+		sendMessageToPopup('Hello welcome to eform copy');
 	}
 
 	if (isEformTab(tab)) {
@@ -53,6 +55,7 @@ function addTabListItem(tab) {
 				files: ['eform-content_script.js'],
 				target: {tabId: eformTabId }
 			});
+			console.log("###### eform adter execute script");
 		}
 	}
 
@@ -62,25 +65,45 @@ function addTabListItem(tab) {
 
 function sendMessageToIsoTab(obj) {
 	if (isoTabId) {
-		console.log("##### messasge send to ISO tab " + isoTabId);
+		console.log("##### messasge send by background process to ISO tab " + isoTabId);
 		chrome.tabs.sendMessage(isoTabId, {message: obj});
 	}
 }
 
 function sendMessageToEFormTab(obj) {
 	if (eformTabId) {
-		console.log("##### message send to eform tab " + eformTabId);
+		console.log("##### message send by bacgrounf process to eform tab " + eformTabId);
 		chrome.tabs.sendMessage(eformTabId, obj);
 	}
 }
 
 function sendMessageToPopup(obj) {
-	console.log("##### message send to popup");
+	console.log("##### message send by background process to popup");
 	chrome.runtime.sendMessage({message: obj});
 }
 
 // https://developpaper.com/chrome-extension-how-to-update-content-scripts-in-real-time/
-console.log("#### background start ");
+
+	chrome.runtime.onConnect.addListener(
+		function(port) {
+			console.log("#### on connect", port);
+		}
+	);
+	chrome.runtime.onInstalled.addListener(
+		function(details) {
+			console.log("#### on installed", details);
+		}
+	);
+	chrome.runtime.onStartup.addListener(
+		function() {
+			console.log("#### on startup");
+		}
+	);
+	chrome.runtime.onSuspend.addListener(
+		function() {
+			console.log("#### on suspend");
+		}
+	);
 
 	chrome.runtime.onMessage.addListener(
 		function(request, sender, sendResponse) {
@@ -93,13 +116,23 @@ console.log("#### background start ");
 				chrome.tabs.sendMessage(eformTabId, {messageType: "CollectEformData"}, function(eformData) {
 					if (eformData) {
 						chrome.runtime.sendMessage({messageType: "InfoMessage", message: "EForm data successfully collected"});
+						console.log("#### EXECUTE COPY -> inform ISO tab");
 						chrome.tabs.sendMessage(isoTabId, {messageType: "ApplyEformDataToIso", data: eformData});
 					}
 				});
+			} else if ((msgType === "InfoMessage") || (msgType === "WarnMessage")) {
+				console.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% received message " + request);
+				chrome.messageHistory.push(request); 
+			} else if (msgType === "GetMessageHistory") {
+				console.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GetMessageHistory " + chrome.messageHistory.length);
+				sendResponse(chrome.messageHistory);
+			} else if (msgType === "ClearMessageHistory") {
+				chrome.messageHistory.splice(0, chrome.messageHistory.length);
 			}
 		}
-	  );
-	  
+	);
+	
+
 	chrome.tabs.onRemoved.addListener( (tabId, removeInfo) => {
 		deleteTabListItem(tabId);
 		console.log("OnRemoved");

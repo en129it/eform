@@ -1,5 +1,5 @@
 import { OperationExecutor, FinalExecutionStatus } from './executor.js';
-import { CheckIsLoggedIn, GotoCompaniesPage, CheckCompanyExistanceInCompaniesPage, GotoCompanyDetailPageFromAllCompaniesPage, CreateCompanyFromAllCompaniesPage, CheckPendingChangesTextImmediate } from './operation.js';
+import { CheckIsLoggedIn, GotoCompaniesPage, CheckCompanyExistanceInCompaniesPage, GotoCompanyDetailPageFromAllCompaniesPage, CreateCompanyFromAllCompaniesPage, CreateCompanyInternalRole, CreateCompanyAdministratorUser, CheckPendingChangesTextImmediate, CreateCompanyFromManageCompanyPage, CreateCompanyPermissions } from './operation.js';
 import { Condition, NotifyUserImmediate, OperationGroup } from './operationType.js';
 
 
@@ -7,13 +7,13 @@ import { Condition, NotifyUserImmediate, OperationGroup } from './operationType.
 export function executeCopy(eformData) {
   console.log("##### Start processing of operations");
 
-  var companyName = eformData.companyName;
+  var companyName = eformData.companyName.value;
     
   var operationGroup = new OperationGroup('Main', 
       new CheckIsLoggedIn(),
       new GotoCompaniesPage(),
       new Condition("Company existance condition",
-          // If company exists 
+          // If the company already exists
           new CheckCompanyExistanceInCompaniesPage(companyName), 
           // Then
           new OperationGroup('Company',
@@ -22,24 +22,34 @@ export function executeCopy(eformData) {
                 // If pending changes
                 new CheckPendingChangesTextImmediate(),
                 // Then
-                new NotifyUserImmediate("Company has pending changes. Review and approve these changes", true, true)
+                new NotifyUserImmediate("Company has pending changes. Review and approve these changes", true, true),
+                // Else
+                new OperationGroup('Company', 
+                    new CreateCompanyFromManageCompanyPage(eformData),
+                    new CreateCompanyPermissions(eformData),
+                    new CreateCompanyInternalRole(eformData),
+                    new CreateCompanyAdministratorUser(eformData)
+                )
             )
           ),
-          // Else
+          // Else create the company
           new CreateCompanyFromAllCompaniesPage(eformData)
       )
   );
   
   
-  var exec = new OperationExecutor();
-  var rslt = exec.execute(operationGroup);
+  
+  var operationExecutor = new OperationExecutor();
+  var rslt = operationExecutor.execute(operationGroup);
   rslt.then( data => {
       console.log("######## rslt with data " + data + "  " + FinalExecutionStatus[0] + " - " + FinalExecutionStatus[1] );
   }, error => {
-      console.log("######## rslt with error " + error);
+      console.log("######## rslt with error ", error);
   });
   
 }
+
+console.log("#### Has executeCopy function ? " + window.executeCopy);
 
 window.executeCopy = executeCopy;
 console.log("##### exported function executeCopy() ", window.executeCopy);

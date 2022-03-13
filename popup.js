@@ -10,6 +10,12 @@ btnElem.addEventListener("click", async (evt) => {
     chrome.runtime.sendMessage({messageType: 'ExecuteCopy'});
   }
 });
+var clearBtnElem = document.getElementById("clear"); 
+clearBtnElem.addEventListener("click", async (evt) => {
+  evt.stopPropagation();
+  clearInfo();
+});
+
 
 function addInfo(message) {
   var divElem = document.createElement("div");
@@ -27,12 +33,19 @@ function addWarning(message) {
 
 function clearInfo() {
   infoElem.innerHTML = '';
+  chrome.runtime.sendMessage({messageType: 'ClearMessageHistory'});
 }
 
+function processMessageRequest(messageRequest) {
+  var msgType = messageRequest.messageType;
+  if (msgType === "InfoMessage") {
+    addInfo(messageRequest.message);
+  } else if (msgType === "WarnMessage") {
+    addWarning(messageRequest.message);
+  }
+}
 
-clearInfo();
 addInfo("Extension startup ...");
-
 
 chrome.runtime.sendMessage({messageType: 'GetTabIds'}, function(response) {
   if (response) {
@@ -56,16 +69,21 @@ chrome.runtime.sendMessage({messageType: 'GetTabIds'}, function(response) {
       isCopyEnabled = false;
       btnElem.classList.add("disable");
     }  
+
+    chrome.runtime.sendMessage({messageType: 'GetMessageHistory'}, function(response) {
+      if (response) {
+        for (var i=0; i<response.length; i++) {
+          var message = response[i];
+          processMessageRequest(message);
+        }
+      }
+    });
+    
   }
 });
 
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-    var msgType = request.messageType;
-    if (msgType === "InfoMessage") {
-      addInfo(request.message);
-    } else if (msgType === "WarnMessage") {
-      addWarning(request.message);
-    }
+    processMessageRequest(request);
   }
 );

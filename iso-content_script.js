@@ -1,51 +1,52 @@
 // Put all the javascript code here, that you want to execute after page load.
 
-function importScript(srca) {
-    const src = chrome.runtime.getURL('iso-content-main.js');
-    console.log("##### url = " + src);
-    const script = document.createElement('script');
-    script.setAttribute("type", "module");
-    script.setAttribute("src", src);
-    const head = document.head || document.getElementsByTagName("head")[0] || document.documentElement;
-    head.insertBefore(script, head.lastChild);
+if (window.extensionContent) {
+    console.log("########## window destroy");
+    window.extensionContent.destroy();
 }
 
-function importScript2(data) {
-    (async () => {
-        const src = chrome.runtime.getURL("iso-content-main.js");
-        const contentMain = await import(src);
-        contentMain.executeCopy(data);
-      })();    
-}
-
-function init() {
-//    importScript(null);
-
-    const bodyElem = document.getElementsByTagName('body')[0];
-    const divElem = document.createElement('div');
-    divElem.style.position = 'fixed';
-    divElem.style.width = '100%';
-    divElem.style.top = '0px';
-    const textAreaElem = document.createElement('textarea');
-    textAreaElem.id = 'commentId';
-    textAreaElem.rows = 2;
-    textAreaElem.style.width = '100%';
-    textAreaElem.style.borderStyle = 'border-size';
-    divElem.prepend(textAreaElem);
-    bodyElem.append(divElem);
-
-    chrome.runtime.onMessage.addListener(
-        function(request, sender, sendResponse) {
-            var messageType = request.messageType;
-            if (messageType === "ApplyEformDataToIso") {
-                importScript2(request.data);
-            }
+window.extensionContent = {
+    importScrit:function(srca) {
+        const src = chrome.runtime.getURL('iso-content-main.js');
+        console.log("##### url = " + src);
+        const script = document.createElement('script');
+        script.setAttribute("type", "module");
+        script.setAttribute("src", src);
+        const head = document.head || document.getElementsByTagName("head")[0] || document.documentElement;
+        head.insertBefore(script, head.lastChild);
+    },
+    
+    importScript2: function(data) {
+        (async () => {
+            console.log("ISO > import script");
+            const src = chrome.runtime.getURL("iso-content-main.js");
+            const contentMain = await import(src);
+            contentMain.executeCopy(data);
+          })();    
+    },
+    
+    listener: function(request, sender, sendResponse) {
+        var messageType = request.messageType;
+        console.log("ISO > onMessage " + messageType);
+        if (messageType === "ApplyEformDataToIso") {
+            window.extensionContent.importScript2(request.data);
         }
-    );
+    },
 
+    init: function() {
+    //    importScript(null);
+        console.log("ISO init() ");
+        chrome.runtime.onMessage.addListener(this.listener);
+    },
+
+    destroy: function() {
+        if (this.listener) {
+            chrome.runtime.onMessage.removeListener(this.listener);
+        }
+    }
 }
 
-init();
+window.extensionContent.init();
 
 
 

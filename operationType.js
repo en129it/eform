@@ -15,8 +15,8 @@ export class Operation {
 }
 export class NoTrialOperation extends Operation {
     execute(context) {
-        const executionStatus = this.executeOperation(context.getDocuments());
         return new Promise((resolve, reject) => {
+            const executionStatus = this.executeOperation(context.getDocuments());
             resolve((executionStatus) ? ExecutionStatus.SUCCEEDED : ExecutionStatus.FAILED);
         });
     }
@@ -24,7 +24,7 @@ export class NoTrialOperation extends Operation {
 export class TimeoutRetrialOperation extends Operation {
     execute(context) {
         return new Promise((resolve, reject) => {
-            resolve(this.executeOperation(context.getDocuments()));
+            resolve(this.executeOperation(context.getDocuments(), context.getLastIFrameLoadEvent()));
         });
     }
 }
@@ -47,15 +47,15 @@ export class OperationGroup extends Operation {
             else {
                 return this.doNextOperation(context, arrayIndex + 1);
             }
-        }, error => {
-            throw new Error(error);
         });
     }
     execute(context) {
         return this.doNextOperation(context, 0).then(finalExecutionStatus => {
             return (finalExecutionStatus === FinalExecutionStatus.SUCCEEDED) ? ExecutionStatus.SUCCEEDED : ExecutionStatus.FAILED;
         }, error => {
-            throw new Error(error);
+            console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ error in group " + error);
+            throw (error instanceof Error) ? error : new Error(error);
+            return error;
         });
     }
 }
@@ -81,9 +81,32 @@ export class Condition extends Operation {
             else {
                 return ExecutionStatus.SUCCEEDED;
             }
-        }, error => {
-            throw new Error(error);
         });
+    }
+}
+export class Conditional extends Operation {
+    constructor(name, condition, success, failure) {
+        super(name);
+        this.condition = condition;
+        this.success = success;
+        this.failure = failure;
+    }
+    execute(context) {
+        let branchPromise = null;
+        if (this.condition()) {
+            branchPromise = context.execute(this.success);
+        }
+        else if (this.failure != null) {
+            branchPromise = context.execute(this.failure);
+        }
+        if (branchPromise != null) {
+            return branchPromise.then(branchExecutionStatus => (branchExecutionStatus === FinalExecutionStatus.SUCCEEDED) ? ExecutionStatus.SUCCEEDED : ExecutionStatus.FAILED, error => { throw new Error(error); });
+        }
+        else {
+            return new Promise((resolve, reject) => {
+                resolve(ExecutionStatus.SUCCEEDED);
+            });
+        }
     }
 }
 export class NotifyUserImmediate extends NoTrialOperation {
@@ -111,5 +134,22 @@ export class NotifyUserImmediate extends NoTrialOperation {
     }
     executeOperation(documents) {
         return true;
+    }
+}
+export class SucceedImmediate extends NoTrialOperation {
+    constructor() {
+        super("Succeed immediate");
+    }
+    executeOperation(documents) {
+        return true;
+    }
+}
+export class SuccessOnFunctionEvalationImmediate extends NoTrialOperation {
+    constructor(evalFct) {
+        super("Success on function evaluation");
+        this.evalFct = evalFct;
+    }
+    executeOperation(documents) {
+        return this.evalFct();
     }
 }
