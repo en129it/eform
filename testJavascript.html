@@ -1,0 +1,53 @@
+<html>
+	<head>
+	</head>
+	<body>
+	<input type="text" id="test">
+<script>
+var var1 = "toto";
+
+var a = function() {
+	console.log("A function ", this);
+	console.log("A function " + var1);
+}
+a();
+
+function a1() {
+	console.log("A1 function");
+}
+a1();
+
+document.getElementById("test").addEventListener("keydown", (event) => {
+	a1();
+});
+
+document.getElementById("test").addEventListener("keydown", function(event) {
+	a1();
+});
+
+var MyTest = function() {
+	this.firstName = 'Toto';
+}
+MyTest.prototype.firstName = 'Titi';
+MyTest.prototype.sayHello = function() {
+		return 'First name ' + this.firstName;
+	};
+var bbb = new MyTest();
+console.log("#### " + bbb.sayHello());
+
+var MyTest2 = function() {
+	MyTest.call(this);
+	console.log("create " + this.firstName, this);
+}
+MyTest2.prototype = MyTest.prototype;
+
+var ccc = new MyTest2();
+console.log("#### " + ccc.sayHello());
+
+
+
+
+</script>
+	</body>
+</html>
+
